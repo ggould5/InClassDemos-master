@@ -15,9 +15,9 @@ namespace eRestaurantSystem.DAL
     //This class should NOT be accessable outside of the
     //component library
 
-    internal class eRestaurantContacts : DbContext
+    internal class eRestaurantContext : DbContext
     {
-        public eRestaurantContacts()
+        public eRestaurantContext()
             : base("name=EatIn")
         {
             //Constructor is used to pass web config string name
