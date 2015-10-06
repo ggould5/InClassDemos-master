@@ -10,6 +10,7 @@ using eRestaurantSystem.DAL.Entities;
 using eRestaurantSystem.DAL.DTOs;
 using eRestaurantSystem.DAL.POCOs;
 using System.ComponentModel; //Object Data Source
+
 #endregion
 
 namespace eRestaurantSystem.BLL
@@ -47,41 +48,73 @@ namespace eRestaurantSystem.BLL
                               orderby item.CustomerName, item.ReservationDate
                               select item;
                 return results.ToList();
+
+
+
             }
         }
 
-        [DataObjectMethod(DataObjectMethodType.Select, false)]
-        public List<ReservationByDate> GetReservationsByDate(string reservationdate)
+    [DataObjectMethod(DataObjectMethodType.Select,false)]
+        public List<ReservationsByDate> GetReservationsByDate(string reservationdate)
         {
             using (var context = new eRestaurantContext())
             {
-                int theYear =(DateTime.Parse(reservationdate)).Year;
-                int theMonth =(DateTime.Parse(reservationdate)).Month;
-                int theDay =(DateTime.Parse(reservationdate)).Day;
-                //query syntax
-                var results = from item in context.SpecialEvents
-                              orderby item.Description
-                              select new ReservationByDate()
+                //Linq is not very playful or cooperative with
+                //DateTime
+
+                //extract the year, month and day ourselves out
+                //of the passed parameter value
+                int theYear = (DateTime.Parse(reservationdate)).Year;
+                int theMonth = (DateTime.Parse(reservationdate)).Month;
+                int theDay = (DateTime.Parse(reservationdate)).Day;
+
+                var results = from eventitem in context.SpecialEvents
+                              orderby eventitem.Description
+                              select new ReservationsByDate() //a new instance for each specialevent row on the table
                               {
-                                    Description = item.Description,
-                                    Reservations = from r in item.Reservations
-                                                   where r.ReservationDate.Year == theYear
-                                                     && r.ReservationDate.Month == theMonth
-                                                     && r.ReservationDate.Day == theDay
-                                                    select new ReservationDetail() 
-                                                    {
-                                                        CustomerName = r.CustomerName,
-                                                        ReservationDate = r.ReservationDate,
-                                                        NumberInParty = r.NumberInParty,
-                                                        ContactPhone = r.ContactPhone,
-                                                        ReservationStatus = r.ReservationStatus,
-                                                    }
-                                                           
+                                  Description = eventitem.Description,
+                                  Reservations = from row in eventitem.Reservations
+                                                 where row.ReservationDate.Year == theYear
+                                                   && row.ReservationDate.Month == theMonth
+                                                   && row.ReservationDate.Day == theDay
+                                                 select new ReservationDetail() // a new for each reservation of a particular specialevent code
+                                                 {
+                                                     CustomerName = row.CustomerName,
+                                                     ReservationDate = row.ReservationDate,
+                                                     NumberInParty = row.NumberInParty,
+                                                     ContactPhone = row.ContactPhone,
+                                                     ReservationStatus = row.ReservationStatus
+                                                 }
 
                               };
                 return results.ToList();
             }
         }
+
+        [DataObjectMethod(DataObjectMethodType.Select, false)]
+        public List<MenuCategoryItems> MenuCategoryItems_List()
+        {
+            using (var context = new eRestaurantContext())
+            {
+                var results = from menuitem in context.MenuCategories
+                              orderby menuitem.Description
+                              select new MenuCategoryItems() 
+                              {
+                                  Description = menuitem.Description,
+                                  MenuItems = from row in menuitem.MenuItems
+                                              select new MenuItem() 
+                                                 {
+                                                     Description = row.Description,
+                                                     Price = row.CurrentPrice,
+                                                     Calories = row.Calories,
+                                                     Comment = row.Comment
+                                                 }
+                              };
+                return results.ToList();
+            }
+        }
       
+
     }
 }
+
