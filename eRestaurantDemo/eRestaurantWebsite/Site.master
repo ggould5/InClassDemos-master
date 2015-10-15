@@ -52,9 +52,10 @@
                     <ul class="nav navbar-nav">
                         <li><a runat="server" href="~/">Home</a></li>
                         <li><a runat="server" href="~/SamplePages/SpecialEventsAdmin">SpecialEvents</a></li>
-                        <li><a runat="server" href="~/SamplePages/Listview">Listview Display</a></li>
-                        <li><a runat="server" href="~/SamplePages/ReservationsByDate">Repeater Display</a></li>
-                        <li><a runat="server" href="~/SamplePages/CategoryMenuItems">Repeater2 Display</a></li>
+                        <li><a runat="server" href="~/SamplePages/Listview">LV Reservations</a></li>
+                        <li><a runat="server" href="~/SamplePages/ReservationsByDate">Rpr Reservations</a></li>
+                        <li><a runat="server" href="~/SamplePages/CategoryMenuItems">Rpr CatMenuItems</a></li>
+                        <li><a runat="server" href="~/CommandPages/SpecialEventsAdmin">LV CRUD</a></li>
                         <li><a runat="server" href="~/About">About</a></li>
                         <li><a runat="server" href="~/Contact">Contact</a></li>
                     </ul>

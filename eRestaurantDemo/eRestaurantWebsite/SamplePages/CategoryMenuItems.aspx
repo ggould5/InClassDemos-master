@@ -6,6 +6,7 @@
         <asp:Repeater ID="MenuCategories" runat="server" DataSourceID="ODSCategoryMenuItems">
             <ItemTemplate>
                 <h3>
+                   
                     <%# Eval("Description") %>
                 </h3>
                 <div class="well">
