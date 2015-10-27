@@ -2,7 +2,7 @@
     CodeFile="SpecialEventsAdmin.aspx.cs" Inherits="SamplePages_SpecialEventsAdmin" %>
 
 <asp:Content ID="Content1" ContentPlaceHolderID="MainContent" Runat="Server">
-    
+    <h1>Display using GridView</h1>
     <table align="center" style="width: 70%">
         <tr>
             <td align="right" style="width:50%">Select an Event:&nbsp;</td>

@@ -18,7 +18,9 @@ namespace eRestaurantSystem.BLL
     [DataObject]
     public class AdminController
     {
+
         #region Queries
+
         [DataObjectMethod(DataObjectMethodType.Select,false)]
         public List<SpecialEvent> SpecialEvents_List()
         {
@@ -35,6 +37,30 @@ namespace eRestaurantSystem.BLL
                               orderby item.Description
                               select item;
                 return results.ToList();
+            }
+        }
+
+        [DataObjectMethod(DataObjectMethodType.Select, false)]
+        public List<Waiter> Waiters_List()
+        {
+            using (var context = new eRestaurantContext())
+            {
+                var results = from item in context.Waiters
+                              orderby item.LastName, item.FirstName
+                              select item;
+                return results.ToList();  //none, 1 or more rows
+            }
+        }
+
+        [DataObjectMethod(DataObjectMethodType.Select, false)]
+        public Waiter GetWaiterByID(int waiterid)
+        {
+            using (var context = new eRestaurantContext())
+            {
+                var results = from item in context.Waiters
+                              where item.WaiterID == waiterid
+                              select item;
+                return results.FirstOrDefault();  //one row at most
             }
         }
 
@@ -93,7 +119,7 @@ namespace eRestaurantSystem.BLL
         }
 
         [DataObjectMethod(DataObjectMethodType.Select, false)]
-        public List<MenuCategoryItems> MenuCategoryItems_List()
+    public List<eRestaurantSystem.DAL.DTOs.MenuCategoryItems> MenuCategoryItems_List()
         {
             using (var context = new eRestaurantContext())
             {
@@ -110,6 +136,49 @@ namespace eRestaurantSystem.BLL
                                                      Calories = row.Calories,
                                                      Comment = row.Comment
                                                  }
+                              };
+                return results.ToList();
+            }
+        }
+
+        [DataObjectMethod(DataObjectMethodType.Select, false)]
+        public List<eRestaurantSystem.DAL.POCOs.CategoryMenuItems> GetReportCategoryMenuItems()
+        {
+            using (eRestaurantContext context = new eRestaurantContext())
+            {
+                var results = from cat in context.Items
+                              orderby cat.Category.Description, cat.Description
+                              select new eRestaurantSystem.DAL.POCOs.CategoryMenuItems
+                              {
+                                  CategoryDescription = cat.Category.Description,
+                                  ItemDescription = cat.Description,
+                                  Price = cat.CurrentPrice,
+                                  Calories = cat.Calories,
+                                  Comment = cat.Comment
+                              };
+
+                return results.ToList(); // this was .Dump() in Linqpad
+            }
+        }
+
+        [DataObjectMethod(DataObjectMethodType.Select, false)]
+        public List<WaiterBilling> GetWaiterBillingReport()
+        {
+            using (eRestaurantContext context = new eRestaurantContext())
+            {
+                var results = from abillrow in context.Bills
+                              where abillrow.BillDate.Month == 5
+                              orderby abillrow.BillDate, abillrow.Waiter.LastName, abillrow.Waiter.FirstName
+                              select new WaiterBilling
+                              {
+                                  BillDate = abillrow.BillDate.Year + "/" +
+                                             abillrow.BillDate.Month + "/" +
+                                             abillrow.BillDate.Day,
+                                  Name = abillrow.Waiter.LastName + ", " + abillrow.Waiter.FirstName,
+                                  BillID = abillrow.BillID,
+                                  BillTotal = abillrow.Items.Sum(bitem => bitem.Quantity * bitem.SalePrice),
+                                  PartySize = abillrow.NumberInParty,
+                                  Contact = abillrow.Reservation.CustomerName
                               };
                 return results.ToList();
             }
@@ -159,7 +228,54 @@ namespace eRestaurantSystem.BLL
                 context.SaveChanges();
             }
         }
+
+         [DataObjectMethod(DataObjectMethodType.Insert, false)]
+         public int Waiters_Add(Waiter item)
+         {
+             using (eRestaurantContext context = new eRestaurantContext())
+             {
+                 //these methods are execute using an instance level item
+                 //set up a instance pointer and initialize to null
+                 Waiter added = null;
+                 //setup the command to execute the add
+                 added = context.Waiters.Add(item);
+                 //command is not executed until it is actually saved.
+                 context.SaveChanges();
+                 //added contains the data of the newly added waiter 
+                 //including the pkey value.
+                 return added.WaiterID;
+             }
+         }
+         [DataObjectMethod(DataObjectMethodType.Update, false)]
+         public void Waiters_Update(Waiter item)
+         {
+             using (eRestaurantContext context = new eRestaurantContext())
+             {
+                 //indicate the updating item instance
+                 //alter the Modified Status flag for this instanc
+                 context.Entry<Waiter>(context.Waiters.Attach(item)).State =
+                     System.Data.Entity.EntityState.Modified;
+                 //command is not executed until it is actually saved.
+                 context.SaveChanges();
+             }
+         }
+         [DataObjectMethod(DataObjectMethodType.Delete, false)]
+         public void Waiters_Delete(Waiter item)
+         {
+             using (eRestaurantContext context = new eRestaurantContext())
+             {
+
+                 //lookup the instance and record if found (set pointer to instance)
+                 Waiter existing = context.Waiters.Find(item.WaiterID);
+
+                 //setup the command to execute the delete
+                 context.Waiters.Remove(existing);
+                 //command is not executed until it is actually saved.
+                 context.SaveChanges();
+             }
+         }
         #endregion
     }//eof class
 }//eof namespace
+
 
