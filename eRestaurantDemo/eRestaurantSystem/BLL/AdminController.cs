@@ -10,7 +10,7 @@ using eRestaurantSystem.DAL.Entities;
 using eRestaurantSystem.DAL.DTOs;
 using eRestaurantSystem.DAL.POCOs;
 using System.ComponentModel; //Object Data Source
-
+using System.Data.Entity;
 #endregion
 
 namespace eRestaurantSystem.BLL
@@ -334,6 +334,187 @@ namespace eRestaurantSystem.BLL
                  return finalResult.OrderBy(x => x.Hour).ToList();
              }
          }
+
+        [DataObjectMethod(DataObjectMethodType.Select,false)]
+        public List<SeatingSummary> SeatingByDateTime (DateTime date, TimeSpan time)
+         {
+            using (eRestaurantContext context = new eRestaurantContext())
+            {
+                // Step 1 - Get the table info along with any walk-in bills and reservation bills for the specific time slot
+                var step1 = from data in context.Tables
+                            select new
+                            {
+                                Table = data.TableNumber,
+                                Seating = data.Capacity,
+                                // This sub-query gets the bills for walk-in customers
+                                WalkIns = from walkIn in data.Bills
+                                          where
+                                                 walkIn.BillDate.Year == date.Year
+                                              && walkIn.BillDate.Month == date.Month
+                                              && walkIn.BillDate.Day == date.Day
+                                              //&& walkIn.BillDate.TimeOfDay <= time
+                                              && DbFunctions.CreateTime(walkIn.BillDate.Hour,
+                                                                        walkIn.BillDate.Minute,
+                                                                        walkIn.BillDate.Second) <= time
+                                              && (!walkIn.OrderPaid.HasValue ||
+                                              walkIn.OrderPaid.Value >= time)
+                                                      //DbFunctions.CreateTime(walkIn.OrderPaid.Value.Hour,
+                                                      //                  walkIn.OrderPaid.Value.Minute,
+                                                      //                  walkIn.OrderPaid.Value.Second) >= time)
+                                                                    //&& (!walkIn.PaidStatus || walkIn.OrderPaid >= time)
+                                          select walkIn,
+                                // This sub-query gets the bills for reservations
+                                Reservations = from booking in data.Reservations
+                                               from reservationParty in booking.Bills
+                                               where
+                                                   reservationParty.BillDate.Year == date.Year
+                                                   && reservationParty.BillDate.Month == date.Month
+                                                   && reservationParty.BillDate.Day == date.Day
+                                                   //&& reservationParty.BillDate.TimeOfDay <= time
+                                                    && DbFunctions.CreateTime(reservationParty.BillDate.Hour,
+                                                                        reservationParty.BillDate.Minute,
+                                                                        reservationParty.BillDate.Second) <= time
+                                                   && (!reservationParty.OrderPaid.HasValue ||
+                                                    //DbFunctions.CreateTime(reservationParty.OrderPaid.Value.Hour,
+                                                    //                    reservationParty.OrderPaid.Value.Minute,
+                                                    //                    reservationParty.OrderPaid.Value.Second) >= time)
+                                                   reservationParty.OrderPaid.Value >= time)
+                                               //                          && (!reservationParty.PaidStatus || reservationParty.OrderPaid >= time)
+                                               select reservationParty
+                            };
+              
+
+                // Step 2 - Union the walk-in bills and the reservation bills while extracting the relevant bill info
+                // .ToList() helps resolve the "Types in Union or Concat are constructed incompatibly" error
+                var step2 = from data in step1.ToList() // .ToList() forces the first result set to be in memory
+                            select new
+                            {
+                                Table = data.Table,
+                                Seating = data.Seating,
+                                CommonBilling = from info in data.WalkIns.Union(data.Reservations)
+                                                select new // info
+                                                {
+                                                    BillID = info.BillID,
+                                                    BillTotal = info.Items.Sum(bi => bi.Quantity * bi.SalePrice),
+                                                    Waiter = info.Waiter.FirstName,
+                                                    Reservation = info.Reservation
+                                                }
+                            };
+                //step2.Dump();
+                // Step 3 - Get just the first CommonBilling item
+                //         (presumes no overlaps can occur - i.e., two groups at the same table at the same time)
+                var step3 = from data in step2.ToList()
+                            select new
+                            {
+                                Table = data.Table,
+                                Seating = data.Seating,
+                                Taken = data.CommonBilling.Count() > 0,
+                                // .FirstOrDefault() is effectively "flattening" my collection of 1 item into a 
+                                // single object whose properties I can get in step 4 using the dot (.) operator
+                                CommonBilling = data.CommonBilling.FirstOrDefault()
+                            };
+                //step3.Dump();
+                // Step 4 - Build our intended seating summary info
+                var step4 = from data in step3
+                            select new SeatingSummary() // the POCO class to use in my BLL
+                            {
+                                Table = data.Table,
+                                Seating = data.Seating,
+                                Taken = data.Taken,
+                                // use a ternary expression to conditionally get the bill id (if it exists)
+                                BillID = data.Taken ?               // if(data.Taken)
+                                         data.CommonBilling.BillID  // value to use if true
+                                       : (int?)null,               // value to use if false
+                                BillTotal = data.Taken ?
+                                            data.CommonBilling.BillTotal : (decimal?)null,
+                                Waiter = data.Taken ? data.CommonBilling.Waiter : (string)null,
+                                ReservationName = data.Taken ?
+                                                  (data.CommonBilling.Reservation != null ?
+                                                   data.CommonBilling.Reservation.CustomerName : (string)null)
+                                                : (string)null
+                            };
+                return step4.ToList();
+            }
+         }
+        [DataObjectMethod(DataObjectMethodType.Select, false)]
+        public List<WaiterOnDuty> ListWaiters()
+        {
+            using (eRestaurantContext context = new eRestaurantContext())
+            {
+                var result = from person in context.Waiters
+                             where person.ReleaseDate == null
+                             select new WaiterOnDuty()
+                             {
+                                 WaiterId = person.WaiterID,
+                                 FullName = person.FirstName + " " + person.LastName
+                             };
+                return result.ToList();
+            }
+        }
+
+        [DataObjectMethod(DataObjectMethodType.Select,false)]
+        public List<SeatingSummary> AvailableSeatingByDateTime(DateTime date, TimeSpan time)
+        {
+            //this queery is not going directly to the entities
+            //this query is using the List<> from another method as its data source
+            var results = from seats in SeatingByDateTime(date, time)
+                          where !seats.Taken
+                          select seats;
+            return results.ToList();
+        }
+
+        //the ccommand from the code behind is NOT using an ODS
+        //therefore it does NOT need [DataObjectMethod]
+        public void SeatCustomer(DateTime when, byte tablenumber, int numberinparty, int waiterid)
+        {
+            //business logic checking should be done before any database processing
+            //rule 1: table must be available
+            //rule 2: ttable size must be greater than or = to numberinparty
+
+            //get the available seats
+            var availableseats = AvailableSeatingByDateTime(when.Date, when.TimeOfDay);
+
+            //start the transaction
+            using (eRestaurantContext context = new eRestaurantContext())
+            {
+                //create a list<> to hold error messages
+                List<string> errors = new List<string>();
+
+                if (!availableseats.Exists(foreachseat => foreachseat.Table == tablenumber))
+                {
+                    //table is not available
+                    errors.Add("Table is currently not available");
+                }
+                if (!availableseats.Exists(foreahcseat => foreahcseat.Table == tablenumber
+                                        && foreahcseat.Seating >= numberinparty))
+                {
+                    errors.Add("Insufficient seating capacity for number of customers");
+                }
+
+                //check of validation
+                if (errors.Count > 0)
+                {
+                    //there is a business rule exception
+                    throw new BusinessRuleException("Unable to seat customer", errors);
+                }
+
+                //we can assume that the data is valid at this point
+                //in our system as soon as a customer is seated a Bill is started
+                Bill seatcustomer = new Bill();
+                seatcustomer.BillDate = when;
+                seatcustomer.NumberInParty = numberinparty;
+                seatcustomer.WaiterID = waiterid;
+                seatcustomer.TableID = tablenumber;
+                seatcustomer.PaidStatus = false;
+
+                //make the request to entityframework to add a record to the database
+                context.Bills.Add(seatcustomer);
+
+                //commit
+                context.SaveChanges();
+
+            } //end of transaction
+        }
         #endregion
     }//eof class
 }//eof namespace

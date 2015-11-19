@@ -79,7 +79,7 @@
                     <Items>
                         <asp:MenuItem Text="Home" NavigateUrl="~/"></asp:MenuItem>
 
-                        <asp:MenuItem Text="Queries" Value="Queries">
+                       <%-- <asp:MenuItem Text="Queries" Value="Queries">
                             <asp:MenuItem Text="SpecialEvents" NavigateUrl="~/SamplePages/SpecialEventsAdmin"></asp:MenuItem>
                             <asp:MenuItem Text="ListView Reservations" NavigateUrl="~/SamplePages/Listview"></asp:MenuItem>
                             <asp:MenuItem Text="Repeater Reservations By Date" NavigateUrl="~/SamplePages/ReservationsByDate"></asp:MenuItem>
@@ -95,7 +95,7 @@
                          <asp:MenuItem Text="Reports" Value="Reports">
                             <asp:MenuItem Text="MenuCategory Items" NavigateUrl="~/Reports/MenuCategoryItemReport"></asp:MenuItem>
                            <asp:MenuItem Text="Waiter Billing" NavigateUrl="~/Reports/WaiterBillingReport"></asp:MenuItem>
-                         </asp:MenuItem>
+                         </asp:MenuItem>--%>
 
                         <asp:MenuItem Text="Front Desk" NavigateUrl="~/UXPages/FrontDesk.aspx"></asp:MenuItem>
 
